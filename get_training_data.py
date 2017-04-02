@@ -66,22 +66,26 @@ def get_midi_info():
             
 
 # Process all of files together
-def cull_midis(voice_list):
+def cull_midis(voice_list, max_voice=4):
     # Input list of acceptable number of voices, eg: [1,2,3]
+    # Or set voice_list to "all" to take in all but ignor
+    # extraneous voices above the max
     if type(voice_list) == int:
         voice_list = [voice_list]
     info = get_midi_info()
-    file_info = [x for x in info if x[0] in voice_list]
+    if voice_list == "all":
+        file_info = [x for x in info]
+    else:
+        file_info = [x for x in info if x[0] in voice_list]
     files = [x[-1] for x in file_info]
     print(len(files), "files found") 
     # Process all files
     all_data = []
     for file in files:
-        data = encode(file)
+        data = encode(file, max_voice=max_voice)
         # Add empty lines for any unused voices
         # so array has uniform shape
-        width = max(voice_list)
-        while data.shape[1] < width:
+        while data.shape[1] < max_voice:
             empty_voice = np.zeros([len(data),1])
             data = np.hstack([data,empty_voice])
         for line in data:
@@ -98,7 +102,7 @@ def cull_midis(voice_list):
 
 def get_xy(data, seqlen=3, y_type=1, save=False):
     """Prepare data. y_type can be float, 1-hot, or 4-hot"""
-    voices = all_data[0].shape[0]
+    voices = data[0].shape[0]
     dataX = [] # Represenation of consecutive notes (of length seqlen)
     dataY = [] # Representation of the following notes
     length = len(data[0]) # Number of features for each element
