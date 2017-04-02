@@ -19,13 +19,14 @@ model.add(LSTM(100, return_sequences=False))
 model.add(Dropout(0.2))
 model.add(Dense(100, activation="relu"))
 model.add(Dense(y.shape[1], activation="softmax"))
-model.compile(loss="categorical_crossentropy", optimizer="adam", metrics=['accuracy'])
+    
 
-def train(epoch_set, batches, seqlen, start_epoch=0, save=True, load_weights=False, make_music=[]):
+def train(epoch_set, batches, seqlen, start_epoch=0, save=True, load_weight=False, make_music=[]):
     # Set save to number of starting epochs and load to filename to load from
     # Make music is a list of seeds
-    if load_weights:
-        model.load_weights(load)
+    model.compile(loss="categorical_crossentropy", optimizer="adam", metrics=['accuracy'])
+    if load_weight:
+        model.load_weights(load_weight)
         model.compile(loss="categorical_crossentropy", optimizer="adam", metrics=['accuracy'])
     for i in range(batches):
         model.fit(x,y, batch_size=64, nb_epoch=epoch_set, verbose=1)
@@ -33,7 +34,7 @@ def train(epoch_set, batches, seqlen, start_epoch=0, save=True, load_weights=Fal
         if save:
             title = str(start_epoch) + "epochs.h5"
             model.save_weights(title)
-            print("Weights saves as", title)
+            print("Weights saved as", title)
         if len(make_music) > 0:
             for ii in range(len(make_music)):
                 filename = str(start_epoch) + "e" + str(ii) + ".csv"
@@ -45,8 +46,7 @@ def train(epoch_set, batches, seqlen, start_epoch=0, save=True, load_weights=Fal
                 
 # eg: x = np.load("X_DATA.npy")
 #     y = np.load("Y_DATA.npy")
-#     train(25, 3, start_epoch=0, load_weights="75epochs.h5", make_music=seeds)
-
+#     train(25, 3, 3, start_epoch=75, make_music=seeds, load_weight="75epochs.h5")
 
 ### Make predictions
 
@@ -130,4 +130,4 @@ def compose(seed, iterations, seqlen, new_tempo=False, shift_pitch=0, save=False
     if save:
         make_csv(str(save), final)
 
-# eg: compose(x[0], 50, 2, new_tempo=False, shift_pitch=0, save="sample.csv")
+# eg: compose(x[0], 50, 2, new_tempo=False, shift_pitch=0)
