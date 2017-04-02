@@ -3,17 +3,22 @@
 
 import numpy as np
 import subprocess # Only used to convert mid files to csv
-gran = 32 # Granularity (smallest note duration captured)
+gran = 8 # Granularity (how small of note duration is captured)
 
 # Initial formatting from raw string to list of commands in 
 # order of timestep (originally was in order of voice)
-def do_format(text):
+def do_format(text, max_voice=False):
     formatted = []
     for line in text:
         line = line.split(", ")
         line[1] = int(line[1])
         if line[2].lower() == "note_on_c" or line[2].lower() == "note_off_c":
-            formatted += [line]
+            if not max_voice:
+                formatted += [line]
+            else:
+                voice = int(line[0])
+                if voice <= int(max_voice + 1):
+                    formatted += [line]
     formatted = sorted(formatted, key=lambda i:i[1])
     return formatted
 
@@ -28,11 +33,8 @@ def transpose(data, offset=40):
 
 # Changes timestamp to relative durations
 def timing(data, metronome, granularity=gran): 
-    last = 0
     for line in data:
-        last = str(line[1])
-        line[1] = line[1] / metronome #Normalized (1.0 = one quarter note)
-        line[1] = round(line[1] * (np.log2(granularity) - 1), 0)
+        line[1] = round(line[1] / metronome  * granularity, 0)     
     return data
 
 
@@ -44,9 +46,10 @@ def trim(data):
         timing = int(line[1])
         note = int(line[4])
         on_off = line[2]
-        if on_off.lower() == "note_on_c":
+        volume = int(line[5])
+        if on_off.lower() == "note_on_c" and volume > 0:
             note = int(line[4])
-        else: #Note_off_c
+        else: #Note_off_c or equivalent
             note = 0
         output.append([timing, voice, note])
     output.sort()
@@ -77,26 +80,7 @@ def expand(data, number_of_voices, end_buffer=10):
     timesteps = np.vstack((timesteps, buffer))
     return timesteps
 
-# Combine all the steps together to convert
-# midi or csv file into our training format
-def encode(filename):
-    if filename[-4:] == ".mid":
-        midiname = filename[:-4] + ".csv"
-        command = "midicsv " + filename + " > " + midiname
-        with open(midiname) as f:
-            text = f.readlines()
-    else: #eg: csv or txt extension
-        with open(filename) as f:
-            text = f.readlines()
-    header = text[0].split(", ")
-    number_of_voices = int(header[4])
-    metronome = int(header[5])
-    f1 = do_format(text)
-    f2 = transpose(f1, offset=50)
-    f3 = timing(f2, metronome)
-    f4 = trim(f3)
-    f5 = expand(f4, number_of_voices)
-    return f5
+
 
 
 ### New format --> CSV (generate predictions from model)
@@ -124,7 +108,7 @@ def collapse(data):
     
 # Redoes some formatting and adds in note_off commands at pitch transitions
 def un_organize(data, metronome=480, granularity=gran):
-    time_factor = metronome / (np.log2(granularity) - 2)
+    time_factor = metronome / gran
     new = []
     prev_voice = 0
     for time, voice, note in data:
@@ -150,7 +134,7 @@ def un_organize(data, metronome=480, granularity=gran):
     
 
 # Converts back into the string format for a csv file
-def undo_format(data, metronome=480):
+def undo_format(data, metronome=480, shift_pitch=15):
     number_of_voices = data[-1][0]
     last_timestep = max([x[1] for x in data]) + 2
     line1 = "0, 0, Header, 1, "+str(number_of_voices)+", "+str(metronome)+"\n"
@@ -170,7 +154,7 @@ def undo_format(data, metronome=480):
         line[0] = str(line[0]) # Voice
         line[1] = str(line[1]) # Time
         line[3] = str(line[3]) # Instrument
-        line[4] = str(line[4]) # Note
+        line[4] = str(line[4] +  shift_pitch) # Note
         line[5] = str(line[5]) # Volume
         line = ", ".join(line)
         formatted += [line + "\n"]
@@ -187,6 +171,31 @@ def undo_format(data, metronome=480):
     formatted.append(end)
     formatted.append("0, 0, End_of_file\n")
     return formatted
+
+
+# Combine all the steps together to convert
+# midi or csv file into our training format
+def encode(filename, max_voice=False):
+    if filename[-4:] == ".mid":
+        midiname = filename[:-4] + ".csv"
+        command = "midicsv " + filename + " > " + midiname
+        with open(midiname) as f:
+            text = f.readlines()
+    else: #eg: csv or txt extension
+        with open(filename) as f:
+            text = f.readlines()
+    header = text[0].split(", ")
+    if not max_voice:
+        number_of_voices = int(header[4])
+    else:
+        number_of_voices = max_voice + 1
+    metronome = int(header[5])
+    f1 = do_format(text, max_voice=max_voice)
+    f2 = transpose(f1, offset=50)
+    f3 = timing(f2, metronome)
+    f4 = trim(f3)
+    f5 = expand(f4, number_of_voices)
+    return f5
 
 
 # Puts all these steps together
