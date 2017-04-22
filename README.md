@@ -1,7 +1,7 @@
 Status:
 -----
 
-[Listen here](https://soundcloud.com/user-758753778/1epochs) to training after 1 epoch (7 minutes on laptop CPU). Converted to standard notation, [this](https://github.com/anbrjohn/BachMaker/blob/master/1e5.pdf) is what the model produced.
+[Listen here](https://soundcloud.com/user-758753778/1epochs) to training after 1 epoch (7 minutes on laptop CPU). Converted to standard notation, [this](https://github.com/anbrjohn/BachMaker/blob/master/1e5.pdf) is what the model produced. [This](https://soundcloud.com/user-758753778/10epochs) is after 10 epochs.
 
 Still a work-in-progress.
 I hope to steadily chip away at it whenever I get tired of the homework that I actually should be doing.
